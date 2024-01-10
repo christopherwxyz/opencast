@@ -62,17 +62,17 @@ export default async function handle(
       const userPostsReactions = (await prisma.$queryRaw`
         SELECT 
           casts.*, 
-          reactions.reaction_type as reaction_type, 
+          reactions.type as reaction_type, 
           messages.fid as message_fid, 
           messages.hash as message_hash, 
           messages.timestamp as message_timestamp,
-          messages.message_type as message_type
+          messages.type as message_type
         FROM casts 
-        JOIN reactions ON casts.hash = reactions.target_hash 
+        JOIN reactions ON casts.hash = reactions.target_cast_hash 
         JOIN messages ON reactions.hash = messages.hash
         WHERE
             casts.fid = ${fid} AND
-            messages.message_type = 3 AND
+            messages.type = 3 AND
             reactions.deleted_at IS NULL AND
             messages.timestamp > ${afterTime}
         ORDER BY reactions.timestamp DESC;
@@ -82,13 +82,13 @@ export default async function handle(
         SELECT 
           messages.fid as message_fid, 
           messages.hash as message_hash, 
-          messages.message_type as message_type,
+          messages.type as message_type,
           messages.timestamp as message_timestamp
         FROM links
         JOIN messages ON links.hash = messages.hash
         WHERE
             links.target_fid = ${fid} AND
-            messages.message_type = 5 AND
+            messages.type = 5 AND
             links.type = 'follow' AND
             links.deleted_at IS NULL AND
             messages.timestamp > ${afterTime};
@@ -99,7 +99,7 @@ export default async function handle(
         replies.fid as message_fid, 
         replies.hash as message_hash, 
         replies.timestamp as message_timestamp,
-        messages.message_type as message_type,
+        messages.type as message_type,
         casts.fid as parent_fid 
         FROM casts as replies
         JOIN casts ON casts.hash = replies.parent_hash
@@ -116,7 +116,7 @@ export default async function handle(
         casts.fid as message_fid, 
         casts.hash as message_hash, 
         casts.timestamp as message_timestamp,
-        messages.message_type as message_type
+        messages.type as message_type
         FROM casts
         JOIN messages ON casts.hash = messages.hash
         WHERE
@@ -150,9 +150,10 @@ export default async function handle(
         fids.add(item.message_fid);
         if ((item as any).parent_fid) fids.add((item as any).parent_fid);
         if ((item as any).mentions) {
-          (item as any as RepliesQueryResult).mentions.forEach((mention) =>
-            fids.add(mention)
-          );
+          const mentions = (item as any as RepliesQueryResult).mentions;
+          if (Array.isArray(mentions)) {
+            mentions.forEach((mention: any) => fids.add(mention));
+          }
         }
       });
       const usersMap: UsersMapType<User> = await resolveUsersMap([...fids]);

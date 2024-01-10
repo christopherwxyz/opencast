@@ -44,24 +44,24 @@ export default async function tweetIdEndpoint(
 
   const signer = await prisma.signers.findFirst({
     where: {
-      signer: cast.messages.signer
+      key: cast.messages.signer
     }
   });
 
   const engagements = await prisma.reactions.findMany({
     where: {
-      target_hash: cast.hash,
+      target_cast_hash: cast.hash,
       deleted_at: null
     },
     select: {
       fid: true,
-      reaction_type: true
+      type: true
     }
   });
 
   // Group reactions by type
   const reactions = engagements.reduce((acc: any, cur) => {
-    const key = cur.reaction_type;
+    const key = cur.type;
     if (acc[key]) {
       acc[key] = [...acc[key], cur.fid.toString()];
     } else {
@@ -92,7 +92,7 @@ export default async function tweetIdEndpoint(
     userLikes: reactions[ReactionType.LIKE] || [],
     userRetweets: reactions[ReactionType.RECAST] || [],
     users: users,
-    client: signer?.name || null
+    client: signer?.fid.toString() || null
   };
 
   res.json({
