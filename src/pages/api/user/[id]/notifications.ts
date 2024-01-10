@@ -112,17 +112,20 @@ export default async function handle(
       `) as RepliesQueryResult[];
 
       const userMentions = (await prisma.$queryRaw`
-        SELECT casts.*, 
-        casts.fid as message_fid, 
-        casts.hash as message_hash, 
-        casts.timestamp as message_timestamp,
-        messages.type as message_type
+        SELECT DISTINCT ON (casts.fid, casts.hash, casts.timestamp, messages.type) 
+          casts.fid as message_fid, 
+          casts.hash as message_hash, 
+          casts.timestamp as message_timestamp,
+          messages.type as message_type,
+          casts.mentions
         FROM casts
-        JOIN messages ON casts.hash = messages.hash
+        JOIN messages ON casts.hash = messages.hash,
+        json_array_elements_text(casts.mentions::json) AS mention
         WHERE
-            casts.deleted_at IS NULL AND
-            casts.timestamp > ${afterTime} AND
-            ${fid} = ANY(casts.mentions);`) as MentionsQueryResult[];
+          casts.deleted_at IS NULL AND
+          casts.timestamp > ${afterTime} AND
+          mention::bigint = ${fid};
+      `) as MentionsQueryResult[];
 
       const badgeCount =
         userNewFollowers.length +
