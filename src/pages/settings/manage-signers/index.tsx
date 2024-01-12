@@ -29,8 +29,32 @@ export default function ManageSigners(): JSX.Element {
     }
   );
 
-  const matchesCurrentSigner = (pubKey: string) =>
-    user?.keyPair?.publicKey.toLowerCase() === pubKey.toLowerCase();
+  const matchesCurrentSigner = (pubKey: string) => {
+    return user?.keyPair?.publicKey.toLowerCase() === pubKey.toLowerCase();
+  }
+
+  if (loading) {
+    // Render a loading indicator while the data is being fetched
+    return <Loading />;
+  }
+
+  if (!signers) {
+    // Render a message or a placeholder if signers is not yet available
+    return <div>Loading signers...</div>;
+  }
+
+  let sortedSigners = [];
+
+  const currentSigner = signers.find((s) => matchesCurrentSigner(s.pubKey));
+  if (currentSigner) {
+    sortedSigners.push(currentSigner);
+  }
+
+  sortedSigners = [
+    ...sortedSigners,
+    ...signers.filter((s) => !matchesCurrentSigner(s.pubKey))
+  ];
+
 
   return (
     <MainContainer>
@@ -41,7 +65,7 @@ export default function ManageSigners(): JSX.Element {
         useActionButton
         action={back}
       ></MainHeader>
-      <section>
+            <section>
         {!user?.keyPair ? (
           <div>You're not logged in.</div>
         ) : loading ? (
@@ -49,47 +73,34 @@ export default function ManageSigners(): JSX.Element {
         ) : signers ? (
           <div>
             <CautionWarn></CautionWarn>
-            {
-              // Show current signer first
-              [
-                signers.find((s) => matchesCurrentSigner(s.pubKey))!,
-                ...signers.filter((s) => !matchesCurrentSigner(s.pubKey))
-              ].map((signer) => (
-                <div
-                  key={signer.pubKey}
-                  title={
+            {sortedSigners.map((signer) => (
+              <div
+                key={signer.pubKey}
+                title={
+                  matchesCurrentSigner(signer.pubKey)
+                    ? 'Signer currently used by this app'
+                    : undefined
+                }
+              >
+                <MenuRow
+                  href={`/settings/manage-signers/${signer.pubKey}`}
+                  title={`${signer.name || truncateAddress(`0x${signer.pubKey}`)
+                    }`}
+                  description={`${formatNumber(
+                    signer.messageCount
+                  )} messages • Last used ${formatDate(
+                    new Date(signer.lastMessageTimestamp),
+                    'tweet'
+                  )}`}
+                  iconName='KeyIcon'
+                  variant={
                     matchesCurrentSigner(signer.pubKey)
-                      ? 'Signer currently used by this app'
+                      ? 'primary'
                       : undefined
                   }
-                >
-                  <MenuRow
-                    href={`/settings/manage-signers/${signer.pubKey}`}
-                    title={`${
-                      signer.name || truncateAddress(`0x${signer.pubKey}`)
-                    }`}
-                    description={`${formatNumber(
-                      signer.messageCount
-                    )} messages • Last used ${formatDate(
-                      new Date(signer.lastMessageTimestamp),
-                      'tweet'
-                    )}`}
-                    /**
-                 • Created ${formatDate(
-                  new Date(signer.createdAtTimestamp),
-                  'tweet'
-                )}
-                 */
-                    iconName='KeyIcon'
-                    variant={
-                      matchesCurrentSigner(signer.pubKey)
-                        ? 'primary'
-                        : undefined
-                    }
-                  ></MenuRow>
-                </div>
-              ))
-            }
+                ></MenuRow>
+              </div>
+            ))}
           </div>
         ) : (
           <Error />
