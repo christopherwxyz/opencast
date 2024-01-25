@@ -113,6 +113,7 @@ export default async function handle(
 
       const userMentions = (await prisma.$queryRaw`
         SELECT DISTINCT ON (casts.fid, casts.hash, casts.timestamp, messages.type) 
+          casts.*,
           casts.fid as message_fid, 
           casts.hash as message_hash, 
           casts.timestamp as message_timestamp,
